@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -38,7 +38,7 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ activeFilePath }) =>
       output: 'Intelligence Fabric Workspace Sandbox initialized. Type commands below.',
       exitCode: 0,
       durationMs: 4,
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: 'SYSTEM',
     },
   ]);
 

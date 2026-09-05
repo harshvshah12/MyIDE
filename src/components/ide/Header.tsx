@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import {
@@ -10,7 +10,8 @@ import {
   Key,
   FolderSync,
   Sparkles,
-  GitPullRequest
+  GitPullRequest,
+  ShieldCheck
 } from 'lucide-react';
 import { ModelMode } from '@/types';
 
@@ -25,6 +26,7 @@ interface HeaderProps {
   onOpenObsidianBridge: () => void;
   onOpenSettings: () => void;
   onOpenGitDiff: () => void;
+  onOpenCapabilitySharing?: () => void;
   onToggleTerminal: () => void;
   onRunActiveFile: () => void;
 }
@@ -40,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenObsidianBridge,
   onOpenSettings,
   onOpenGitDiff,
+  onOpenCapabilitySharing,
   onToggleTerminal,
   onRunActiveFile,
 }) => {
@@ -150,6 +153,19 @@ export const Header: React.FC<HeaderProps> = ({
           <Share2 className="w-3.5 h-3.5" />
           <span>Share</span>
         </button>
+
+        {/* Capability Sharing & Entitlements */}
+        {onOpenCapabilitySharing && (
+          <button
+            type="button"
+            onClick={onOpenCapabilitySharing}
+            title="Capability Sharing & Entitlements Vault (Zero-Leak)"
+            className="flex items-center space-x-1 px-2 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 transition-colors text-xs"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Entitlements</span>
+          </button>
+        )}
 
         {/* Credentials & Settings */}
         <button

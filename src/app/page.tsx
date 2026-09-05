@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/ide/Header';
@@ -63,6 +63,11 @@ export default function FabricIDE() {
 
   // Collaborators
   const [onlineCount, setOnlineCount] = useState(3);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Load Workspace and initial files on mount
   const refreshFiles = useCallback(async () => {
@@ -229,6 +234,17 @@ export default function FabricIDE() {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
+  if (!isMounted) {
+    return (
+      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#090D16] text-slate-300 font-mono text-xs select-none">
+        <div className="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20 mb-3 animate-pulse">
+          F
+        </div>
+        <div className="text-slate-400">Initializing Fabric Studio...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#090D16] text-[#F8FAFC] overflow-hidden select-none">
       {/* 1. Global Header */}
@@ -243,6 +259,7 @@ export default function FabricIDE() {
         onOpenObsidianBridge={() => setIsObsidianOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGitDiff={() => setIsGitDiffOpen(true)}
+        onOpenCapabilitySharing={() => setIsSharingOpen(true)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         onRunActiveFile={() => {
           if (!isTerminalOpen) setIsTerminalOpen(true);

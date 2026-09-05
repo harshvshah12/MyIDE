@@ -1,4 +1,25 @@
-﻿export type CollaboratorRole = 'owner' | 'editor' | 'viewer';
+// Normalized Domain Entities (Phase 1 Foundation)
+export type {
+  User as DomainUser,
+  Workspace as DomainWorkspace,
+  WorkspaceMember as DomainWorkspaceMember,
+  WorkspaceRole as DomainWorkspaceRole,
+  Project as DomainProject,
+  ProviderConnection as DomainProviderConnection,
+  Capability as DomainCapability,
+  Entitlement as DomainEntitlement,
+  ProjectMemory as DomainProjectMemory,
+  Evidence as DomainEvidence,
+} from '@/lib/schema/entities';
+
+export type {
+  ModelCapabilityMetadata,
+  ProviderAdapter,
+  ProviderExecutionRequest,
+  ProviderExecutionResult,
+} from '@/lib/providers/types';
+
+export type CollaboratorRole = 'owner' | 'editor' | 'viewer';
 
 export interface User {
   id: string;
@@ -6,6 +27,14 @@ export interface User {
   email: string;
   avatarUrl?: string;
   color: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  rootPath: string;
+  createdAt: number;
+  lastOpenedAt: number;
 }
 
 export interface Presence {
@@ -44,17 +73,9 @@ export interface FileTab {
   cursorPosition?: { lineNumber: number; column: number };
 }
 
-export interface Workspace {
-  id: string;
-  name: string;
-  rootPath: string;
-  createdAt: number;
-  lastOpenedAt: number;
-}
-
 // AI Model Routing Modes
 export type ModelMode = 'auto' | 'manual' | 'capability';
-export type ModelProvider = 'google' | 'anthropic' | 'openai' | 'local';
+export type ModelProvider = 'google' | 'anthropic' | 'openai' | 'openrouter' | 'local';
 
 export interface AIModel {
   id: string;
@@ -88,7 +109,7 @@ export interface RoutingDecision {
   qualityPrioritySatisfied: boolean;
 }
 
-// Capability System
+// Capability System (UI Interfaces)
 export type CapabilityType = 'model' | 'agent' | 'gpu' | 'tool';
 
 export interface Capability {
@@ -177,7 +198,7 @@ export interface AgentChatMessage {
   evidenceId?: string;
 }
 
-// Project Intelligence
+// Project Intelligence (UI Interfaces)
 export interface ArchitecturalDecision {
   id: string;
   date: string;

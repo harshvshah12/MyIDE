@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -53,3 +53,6 @@ Thumbs.db
 
 data/vault.json
 data/*.json
+data/store/
+.playwright-mcp/
+phase1_preview_verified.png

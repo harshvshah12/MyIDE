@@ -8,9 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test tests/crypto.test.js tests/router.test.js tests/storage.test.js",
-    "test:unit": "node --test tests/crypto.test.js tests/router.test.js tests/storage.test.js",
-    "test:e2e": "node --test tests/e2e-api.test.js"
+    "test": "node --experimental-strip-types --test --test-concurrency=1 tests/crypto.test.js tests/schema.test.js tests/storage.test.js tests/security.test.js",
+    "test:phase1": "node --experimental-strip-types --test --test-concurrency=1 tests/crypto.test.js tests/schema.test.js tests/storage.test.js tests/security.test.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

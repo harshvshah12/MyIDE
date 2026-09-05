@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -62,8 +62,10 @@ export const DEFAULT_WORKSPACE_PATH = path.join(process.cwd(), 'workspace', 'dem
 export function ensureDefaultWorkspace(): void {
   if (!fs.existsSync(DEFAULT_WORKSPACE_PATH)) {
     fs.mkdirSync(DEFAULT_WORKSPACE_PATH, { recursive: true });
-    
-    // Seed initial files for student team
+  }
+
+  const readmePath = path.join(DEFAULT_WORKSPACE_PATH, 'README.md');
+  if (!fs.existsSync(readmePath)) {
     const readmeContent = `# SmartVision AI - Edge Object Detection
 Collaborative student research project.
 
@@ -77,7 +79,11 @@ Collaborative student research project.
 - Realtime telemetry: WebSocket
 - UI: Next.js + Tailwind + Monaco
 `;
+    fs.writeFileSync(readmePath, readmeContent, 'utf8');
+  }
 
+  const pyPath = path.join(DEFAULT_WORKSPACE_PATH, 'inference.py');
+  if (!fs.existsSync(pyPath)) {
     const mainPy = `"""
 SmartVision Edge Pipeline
 Initial prototype for campus hackathon.
@@ -97,9 +103,7 @@ def process_frame(frame_data):
 if __name__ == "__main__":
     print("Inference engine ready. Awaiting camera stream...")
 `;
-
-    fs.writeFileSync(path.join(DEFAULT_WORKSPACE_PATH, 'README.md'), readmeContent, 'utf8');
-    fs.writeFileSync(path.join(DEFAULT_WORKSPACE_PATH, 'inference.py'), mainPy, 'utf8');
+    fs.writeFileSync(pyPath, mainPy, 'utf8');
   }
 }
 

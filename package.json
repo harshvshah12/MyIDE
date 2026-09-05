@@ -1,0 +1,35 @@
+﻿{
+  "name": "project-intelligence-fabric",
+  "version": "1.0.0",
+  "description": "Collaborative AI-Native IDE for Student Teams and Hackathons",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "dependencies": {
+    "next": "^15.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.475.0",
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.52.2",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.0.1",
+    "zod": "^3.24.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@types/uuid": "^10.0.0",
+    "tailwindcss": "^3.4.17",
+    "postcss": "^8.5.2",
+    "autoprefixer": "^10.4.20"
+  }
+}

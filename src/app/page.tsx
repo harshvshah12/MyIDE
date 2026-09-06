@@ -16,6 +16,11 @@ import { ProjectIntelligence } from '@/components/ide/ProjectIntelligence';
 import { ObsidianBridgeModal } from '@/components/ide/ObsidianBridgeModal';
 import { SettingsModal } from '@/components/ide/SettingsModal';
 import { DiffViewerModal } from '@/components/ide/DiffViewerModal';
+import {
+  WorkspaceItem,
+  ProjectItem,
+} from '@/components/ide/WorkspaceContextSelector';
+import { WorkspaceEmptyState } from '@/components/ide/WorkspaceEmptyState';
 
 import {
   FileNode,
@@ -65,39 +70,114 @@ export default function FabricIDE() {
   const [onlineCount, setOnlineCount] = useState(3);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Real Workspace & Project Context Engine State (Phase 2)
+  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceItem | null>(null);
+  const [currentProject, setCurrentProject] = useState<ProjectItem | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | 'viewer' | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [isContextLoading, setIsContextLoading] = useState(true);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Load Workspace and initial files on mount
-  const refreshFiles = useCallback(async () => {
+  // Fetch active context on mount
+  const fetchContext = useCallback(async (requestedWsId?: string, requestedProjId?: string) => {
+    setIsContextLoading(true);
     try {
-      const res = await fetch('/api/files?tree=true');
+      let url = '/api/context';
+      const params = new URLSearchParams();
+      if (requestedWsId) params.set('workspaceId', requestedWsId);
+      if (requestedProjId) params.set('projectId', requestedProjId);
+      const q = params.toString();
+      if (q) url += `?${q}`;
+
+      const res = await fetch(url);
       const data = await res.json();
-      if (data.tree) {
-        setFiles(data.tree);
-
-        // If no tabs open, automatically open inference.py or README.md
-        if (tabs.length === 0) {
-          const defaultPath = data.tree.find((f: FileNode) => f.name === 'inference.py')
-            ? 'inference.py'
-            : data.tree[0]?.path;
-
-          if (defaultPath) {
-            loadFileIntoTab(defaultPath);
-          }
+      if (data.success && data.context) {
+        const ctx = data.context;
+        setCurrentWorkspace(ctx.workspace);
+        setCurrentProject(ctx.project);
+        setCurrentUserRole(ctx.role);
+        setWorkspaces(ctx.accessibleWorkspaces || []);
+        setProjects(ctx.accessibleProjects || []);
+        if (ctx.workspace) {
+          setWorkspaceName(ctx.workspace.name);
         }
       }
     } catch (e) {
-      console.error('Failed to load file tree:', e);
+      console.error('Failed to load active context:', e);
+    } finally {
+      setIsContextLoading(false);
     }
-  }, [tabs.length]);
+  }, []);
 
   useEffect(() => {
-    refreshFiles();
-  }, [refreshFiles]);
+    fetchContext();
+  }, [fetchContext]);
 
-  const loadFileIntoTab = async (filePath: string) => {
+  const handleSwitchContext = async (workspaceId: string, projectId?: string) => {
+    setIsContextLoading(true);
+    try {
+      const res = await fetch('/api/context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId, projectId }),
+      });
+      const data = await res.json();
+      if (data.success && data.context) {
+        const ctx = data.context;
+        setCurrentWorkspace(ctx.workspace);
+        setCurrentProject(ctx.project);
+        setCurrentUserRole(ctx.role);
+        setWorkspaces(ctx.accessibleWorkspaces || []);
+        setProjects(ctx.accessibleProjects || []);
+        if (ctx.workspace) {
+          setWorkspaceName(ctx.workspace.name);
+        }
+        setTabs([]);
+        setActiveTabId(undefined);
+        if (ctx.project) {
+          refreshFiles(ctx.project.id);
+        } else {
+          setFiles([]);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to switch context:', e);
+    } finally {
+      setIsContextLoading(false);
+    }
+  };
+
+  const handleCreateWorkspace = async (name: string, slug: string) => {
+    const res = await fetch('/api/workspace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, slug }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create workspace');
+    }
+    await handleSwitchContext(data.workspace.id);
+  };
+
+  const handleCreateProject = async (workspaceId: string, name: string, slug: string, kind: string) => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspaceId, name, slug, kind }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create project');
+    }
+    await handleSwitchContext(workspaceId, data.project.id);
+  };
+
+  const loadFileIntoTab = useCallback(async (filePath: string, projId?: string) => {
     const existing = tabs.find((t) => t.path === filePath);
     if (existing) {
       setActiveTabId(existing.id);
@@ -105,7 +185,11 @@ export default function FabricIDE() {
     }
 
     try {
-      const res = await fetch(`/api/files?path=${encodeURIComponent(filePath)}`);
+      const targetProjId = projId || currentProject?.id;
+      const url = targetProjId
+        ? `/api/files?path=${encodeURIComponent(filePath)}&projectId=${targetProjId}`
+        : `/api/files?path=${encodeURIComponent(filePath)}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         const ext = filePath.split('.').pop() || '';
@@ -124,7 +208,39 @@ export default function FabricIDE() {
     } catch (e) {
       console.error('Error opening file:', e);
     }
-  };
+  }, [tabs, currentProject?.id]);
+
+  // Load Workspace and initial files scoped to active project
+  const refreshFiles = useCallback(async (projId?: string) => {
+    const targetProjId = projId || currentProject?.id;
+    try {
+      const url = targetProjId ? `/api/files?tree=true&projectId=${targetProjId}` : '/api/files?tree=true';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.tree) {
+        setFiles(data.tree);
+
+        // If no tabs open, automatically open inference.py or README.md
+        if (tabs.length === 0) {
+          const defaultPath = data.tree.find((f: FileNode) => f.name === 'inference.py')
+            ? 'inference.py'
+            : data.tree[0]?.path;
+
+          if (defaultPath) {
+            loadFileIntoTab(defaultPath, targetProjId);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load file tree:', e);
+    }
+  }, [currentProject?.id, tabs.length, loadFileIntoTab]);
+
+  useEffect(() => {
+    if (currentProject?.id) {
+      refreshFiles(currentProject.id);
+    }
+  }, [currentProject?.id, refreshFiles]);
 
   const getLanguage = (ext: string) => {
     switch (ext) {
@@ -144,7 +260,7 @@ export default function FabricIDE() {
       await fetch('/api/files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: newPath, type }),
+        body: JSON.stringify({ path: newPath, type, projectId: currentProject?.id }),
       });
       await refreshFiles();
       if (type === 'file') {
@@ -157,7 +273,10 @@ export default function FabricIDE() {
 
   const handleDeleteItem = async (targetPath: string) => {
     try {
-      await fetch(`/api/files?path=${encodeURIComponent(targetPath)}`, { method: 'DELETE' });
+      const url = currentProject?.id
+        ? `/api/files?path=${encodeURIComponent(targetPath)}&projectId=${currentProject.id}`
+        : `/api/files?path=${encodeURIComponent(targetPath)}`;
+      await fetch(url, { method: 'DELETE' });
       setTabs((prev) => prev.filter((t) => t.path !== targetPath));
       await refreshFiles();
     } catch (e) {
@@ -173,7 +292,7 @@ export default function FabricIDE() {
       await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: tab.path, content: tab.content }),
+        body: JSON.stringify({ path: tab.path, content: tab.content, projectId: currentProject?.id }),
       });
       setTabs((prev) =>
         prev.map((t) => (t.id === tabId ? { ...t, isDirty: false, savedContent: t.content } : t))
@@ -250,6 +369,15 @@ export default function FabricIDE() {
       {/* 1. Global Header */}
       <Header
         workspaceName={workspaceName}
+        currentWorkspace={currentWorkspace}
+        currentProject={currentProject}
+        currentUserRole={currentUserRole}
+        workspaces={workspaces}
+        projects={projects}
+        onSwitchContext={handleSwitchContext}
+        onCreateWorkspace={handleCreateWorkspace}
+        onCreateProject={handleCreateProject}
+        isContextLoading={isContextLoading}
         modelMode={modelMode}
         activeModelName={activeModelName}
         activeCapabilityName={activeCapabilityName}
@@ -267,10 +395,26 @@ export default function FabricIDE() {
       />
 
       {/* 2. Main Studio Workspace Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Explorer & File Tree (w-56) */}
-        <div className="w-56 shrink-0 h-full">
-          <FileTree
+      {!isContextLoading && workspaces.length === 0 ? (
+        <div className="flex-1 flex overflow-hidden">
+          <WorkspaceEmptyState
+            type="no-workspaces"
+            onCreateWorkspace={handleCreateWorkspace}
+          />
+        </div>
+      ) : !isContextLoading && currentWorkspace && projects.length === 0 ? (
+        <div className="flex-1 flex overflow-hidden">
+          <WorkspaceEmptyState
+            type="no-projects"
+            workspaceName={currentWorkspace.name}
+            onCreateProject={(name, slug, kind) => handleCreateProject(currentWorkspace.id, name, slug, kind)}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left: Explorer & File Tree (w-56) */}
+          <div className="w-56 shrink-0 h-full">
+            <FileTree
             files={files}
             activeFilePath={activeTab?.path}
             onSelectFile={loadFileIntoTab}
@@ -326,6 +470,7 @@ export default function FabricIDE() {
           />
         </div>
       </div>
+    )}
 
       {/* 3. Global Status Bar */}
       <StatusBar

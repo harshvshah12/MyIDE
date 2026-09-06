@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -170,7 +170,7 @@ export const ProjectIntelligence: React.FC<ProjectIntelligenceProps> = ({ isOpen
           {activeTab === 'qa' && (
             <div className="space-y-4">
               <div className="text-[11px] text-slate-400">
-                Ask anything about the team's historical design decisions, chosen libraries, or past failures.
+                Ask anything about the team&apos;s historical design decisions, chosen libraries, or past failures.
               </div>
 
               <form onSubmit={handleAsk} className="space-y-2">

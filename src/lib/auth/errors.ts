@@ -33,3 +33,11 @@ export class QuotaExceededError extends Error {
     this.name = 'QuotaExceededError';
   }
 }
+
+export class ValidationError extends Error {
+  public readonly statusCode = 400;
+  constructor(message = 'Invalid request parameters') {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}

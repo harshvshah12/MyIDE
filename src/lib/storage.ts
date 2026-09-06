@@ -119,7 +119,7 @@ export function getFileTree(dirPath: string = DEFAULT_WORKSPACE_PATH): FileNode[
       if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
 
       const fullPath = path.join(currentPath, entry.name);
-      const relativePath = path.relative(DEFAULT_WORKSPACE_PATH, fullPath).replace(/\\/g, '/');
+      const relativePath = path.relative(dirPath, fullPath).replace(/\\/g, '/');
 
       if (entry.isDirectory()) {
         nodes.push({

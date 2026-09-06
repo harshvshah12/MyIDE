@@ -54,5 +54,7 @@ Thumbs.db
 data/vault.json
 data/*.json
 data/store/
+workspaces/
 .playwright-mcp/
 phase1_preview_verified.png
+phase2_playwright_verified.png

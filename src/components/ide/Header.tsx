@@ -14,9 +14,23 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { ModelMode } from '@/types';
+import {
+  WorkspaceContextSelector,
+  WorkspaceItem,
+  ProjectItem,
+} from './WorkspaceContextSelector';
 
 interface HeaderProps {
   workspaceName: string;
+  currentWorkspace?: WorkspaceItem | null;
+  currentProject?: ProjectItem | null;
+  currentUserRole?: 'owner' | 'admin' | 'member' | 'viewer' | null;
+  workspaces?: WorkspaceItem[];
+  projects?: ProjectItem[];
+  onSwitchContext?: (workspaceId: string, projectId?: string) => Promise<void>;
+  onCreateWorkspace?: (name: string, slug: string) => Promise<void>;
+  onCreateProject?: (workspaceId: string, name: string, slug: string, kind: string) => Promise<void>;
+  isContextLoading?: boolean;
   modelMode: ModelMode;
   activeModelName: string;
   activeCapabilityName?: string;
@@ -33,6 +47,15 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   workspaceName,
+  currentWorkspace,
+  currentProject,
+  currentUserRole,
+  workspaces = [],
+  projects = [],
+  onSwitchContext,
+  onCreateWorkspace,
+  onCreateProject,
+  isContextLoading,
   modelMode,
   activeModelName,
   activeCapabilityName,
@@ -64,11 +87,25 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="h-4 w-px bg-white/10" />
 
-        {/* Workspace pill */}
-        <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/5 text-xs text-slate-300">
-          <Layers className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="font-medium truncate max-w-[180px]">{workspaceName}</span>
-        </div>
+        {/* Workspace & Project Selector */}
+        {onSwitchContext && onCreateWorkspace && onCreateProject ? (
+          <WorkspaceContextSelector
+            currentWorkspace={currentWorkspace || null}
+            currentProject={currentProject || null}
+            currentUserRole={currentUserRole || null}
+            workspaces={workspaces}
+            projects={projects}
+            onSwitchContext={onSwitchContext}
+            onCreateWorkspace={onCreateWorkspace}
+            onCreateProject={onCreateProject}
+            isLoading={isContextLoading}
+          />
+        ) : (
+          <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/5 text-xs text-slate-300">
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="font-medium truncate max-w-[180px]">{workspaceName}</span>
+          </div>
+        )}
       </div>
 
       {/* Center: Quick Execution Actions */}

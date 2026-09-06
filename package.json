@@ -8,9 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test --test-concurrency=1 tests/crypto.test.js tests/schema.test.js tests/storage.test.js tests/security.test.js tests/workspace.test.js",
+    "test": "node --experimental-strip-types --test --test-concurrency=1 tests/crypto.test.js tests/schema.test.js tests/storage.test.js tests/security.test.js tests/workspace.test.js tests/oauth.test.js tests/providers.test.js",
     "test:phase1": "node --experimental-strip-types --test --test-concurrency=1 tests/crypto.test.js tests/schema.test.js tests/storage.test.js tests/security.test.js",
     "test:phase2": "node --experimental-strip-types --test --test-concurrency=1 tests/workspace.test.js",
+    "test:phase3": "node --experimental-strip-types --test --test-concurrency=1 tests/oauth.test.js tests/providers.test.js",
     "test:e2e": "node tests/test-boundaries.mjs"
   },
   "dependencies": {

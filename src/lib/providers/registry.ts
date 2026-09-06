@@ -22,7 +22,18 @@ class ProviderRegistryService {
   }
 }
 
+import { GoogleGeminiAdapter } from './adapters/google.ts';
+import { AnthropicAdapter } from './adapters/anthropic.ts';
+import { OpenAIAdapter } from './adapters/openai.ts';
+import { LocalDaemonAdapter } from './adapters/local.ts';
+
 export const ProviderRegistry = new ProviderRegistryService();
+
+// Register concrete provider adapters
+ProviderRegistry.register(new GoogleGeminiAdapter());
+ProviderRegistry.register(new AnthropicAdapter());
+ProviderRegistry.register(new OpenAIAdapter());
+ProviderRegistry.register(new LocalDaemonAdapter());
 
 /**
  * Built-in Base Metadata for Configured Models

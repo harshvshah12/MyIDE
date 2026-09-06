@@ -21,6 +21,8 @@ import {
   ProjectItem,
 } from '@/components/ide/WorkspaceContextSelector';
 import { WorkspaceEmptyState } from '@/components/ide/WorkspaceEmptyState';
+import { UserProfile } from '@/components/ide/UserProfileButton';
+import { DevAuthSwitcher } from '@/components/ide/DevAuthSwitcher';
 
 import {
   FileNode,
@@ -78,9 +80,70 @@ export default function FabricIDE() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [isContextLoading, setIsContextLoading] = useState(true);
 
+  // User Authentication State (Phase 3)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isDevMode, setIsDevMode] = useState(false);
+
+  // Fetch authenticated user profile
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      const data = await res.json();
+      if (data.isDev) {
+        setIsDevMode(true);
+      }
+      if (data.authenticated && data.user) {
+        setCurrentUser(data.user);
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (e) {
+      console.error('Failed to load current user profile:', e);
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setCurrentUser(null);
+      await fetchContext();
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
+  };
+
+  const handleSwitchPersona = async (personaId: string) => {
+    const persona = [
+      { id: 'usr_owner_1', email: 'owner@mit.edu', name: 'MIT Lab Owner' },
+      { id: 'usr_admin_1', email: 'admin@mit.edu', name: 'Lab Admin' },
+      { id: 'usr_member_1', email: 'member@mit.edu', name: 'Student Member' },
+      { id: 'usr_viewer_1', email: 'viewer@mit.edu', name: 'Auditor' },
+      { id: 'usr_stranger_1', email: 'stranger@stanford.edu', name: 'Outside Visitor' },
+    ].find((p) => p.id === personaId);
+
+    if (persona) {
+      try {
+        await fetch('/api/auth/mock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: persona.email,
+            name: persona.name,
+            sub: `google_${persona.id}`,
+          }),
+        });
+        await fetchCurrentUser();
+        await fetchContext();
+      } catch (e) {
+        console.error('Failed to switch test persona:', e);
+      }
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    fetchCurrentUser();
+  }, [fetchCurrentUser]);
 
   // Fetch active context on mount
   const fetchContext = useCallback(async (requestedWsId?: string, requestedProjId?: string) => {
@@ -366,12 +429,22 @@ export default function FabricIDE() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#090D16] text-[#F8FAFC] overflow-hidden select-none">
+      {/* 0. Dev Auth Switcher (Development Only) */}
+      {isDevMode && (
+        <DevAuthSwitcher
+          currentUserId={currentUser?.id}
+          onSwitchPersona={handleSwitchPersona}
+        />
+      )}
+
       {/* 1. Global Header */}
       <Header
         workspaceName={workspaceName}
         currentWorkspace={currentWorkspace}
         currentProject={currentProject}
         currentUserRole={currentUserRole}
+        user={currentUser}
+        onLogout={handleLogout}
         workspaces={workspaces}
         projects={projects}
         onSwitchContext={handleSwitchContext}

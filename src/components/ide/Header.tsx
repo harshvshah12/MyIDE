@@ -19,12 +19,15 @@ import {
   WorkspaceItem,
   ProjectItem,
 } from './WorkspaceContextSelector';
+import { UserProfileButton, UserProfile } from './UserProfileButton';
 
 interface HeaderProps {
   workspaceName: string;
   currentWorkspace?: WorkspaceItem | null;
   currentProject?: ProjectItem | null;
   currentUserRole?: 'owner' | 'admin' | 'member' | 'viewer' | null;
+  user?: UserProfile | null;
+  onLogout?: () => void;
   workspaces?: WorkspaceItem[];
   projects?: ProjectItem[];
   onSwitchContext?: (workspaceId: string, projectId?: string) => Promise<void>;
@@ -50,6 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
   currentWorkspace,
   currentProject,
   currentUserRole,
+  user,
+  onLogout,
   workspaces = [],
   projects = [],
   onSwitchContext,
@@ -213,6 +218,15 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Key className="w-4 h-4" />
         </button>
+
+        <div className="h-4 w-px bg-white/10 mx-1" />
+
+        {/* User Identity Profile */}
+        <UserProfileButton
+          user={user || null}
+          onLogout={onLogout || (() => {})}
+          onOpenSettings={onOpenSettings}
+        />
       </div>
     </header>
   );

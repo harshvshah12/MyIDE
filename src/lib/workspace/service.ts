@@ -43,7 +43,7 @@ import {
 
 export interface CreateWorkspaceDTO {
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
   rootDirectory?: string;
 }
@@ -63,15 +63,23 @@ export async function createWorkspace(
     throw new NotFoundError(`User "${userId}" not found.`);
   }
 
-  // Validate slug uniqueness
-  const cleanSlug = dto.slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+  // Generate and validate slug safely
+  const hasExplicitSlug = Boolean(dto.slug && dto.slug.trim());
+  let cleanSlug = (dto.slug || dto.name || 'workspace')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-');
   if (cleanSlug.length < 2) {
-    throw new ValidationError('Workspace slug must be at least 2 characters.');
+    cleanSlug = `ws-${cleanSlug || 'default'}`;
   }
 
-  const existingSlug = WorkspaceRepository.findBySlug(cleanSlug);
-  if (existingSlug) {
-    throw new ValidationError(`Workspace slug "${cleanSlug}" is already taken.`);
+  const existingWorkspace = WorkspaceRepository.findBySlug(cleanSlug);
+  if (existingWorkspace) {
+    if (hasExplicitSlug) {
+      throw new ValidationError(`Workspace slug "${cleanSlug}" is already taken.`);
+    }
+    // Prevent collision by appending random suffix for auto-derived slugs
+    cleanSlug = `${cleanSlug}-${Math.random().toString(36).substring(2, 6)}`;
   }
 
   const now = Date.now();
@@ -80,11 +88,17 @@ export async function createWorkspace(
   const defaultBaseDir = isServerless ? path.join(os.tmpdir(), 'myide', 'workspaces') : path.resolve(process.cwd(), 'workspaces');
   const rootDir = dto.rootDirectory || path.join(defaultBaseDir, cleanSlug);
 
+  try {
+    fs.mkdirSync(rootDir, { recursive: true });
+  } catch {
+    // Ignore folder creation errors on restricted environments
+  }
+
   const workspace: Workspace = {
     id: workspaceId,
     slug: cleanSlug,
-    name: dto.name.trim(),
-    description: dto.description?.trim(),
+    name: (dto.name || 'Workspace').trim(),
+    description: dto.description?.trim() || undefined,
     rootDirectory: rootDir,
     ownerId: userId,
     createdAt: now,
@@ -373,7 +387,7 @@ export async function removeWorkspaceMember(
 export interface CreateProjectDTO {
   workspaceId: string;
   name: string;
-  slug: string;
+  slug?: string;
   path?: string;
   kind?: Project['kind'];
   stack?: string[];
@@ -390,9 +404,12 @@ export async function createProject(
     throw new NotFoundError(`Workspace "${dto.workspaceId}" not found.`);
   }
 
-  const cleanSlug = dto.slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+  let cleanSlug = (dto.slug || dto.name || 'project')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-');
   if (cleanSlug.length < 2) {
-    throw new ValidationError('Project slug must be at least 2 characters.');
+    cleanSlug = `proj-${cleanSlug || 'default'}`;
   }
 
   // Check slug uniqueness within workspace
@@ -405,10 +422,16 @@ export async function createProject(
   const projectId = `proj_${cleanSlug}_${Math.random().toString(36).substring(2, 7)}`;
   const projPath = dto.path || path.join(workspace.rootDirectory, cleanSlug);
 
+  try {
+    fs.mkdirSync(projPath, { recursive: true });
+  } catch {
+    // Ignore folder creation errors on restricted environments
+  }
+
   const project: Project = {
     id: projectId,
     workspaceId: dto.workspaceId,
-    name: dto.name.trim(),
+    name: (dto.name || 'Project').trim(),
     slug: cleanSlug,
     path: projPath,
     kind: dto.kind || 'hackathon',

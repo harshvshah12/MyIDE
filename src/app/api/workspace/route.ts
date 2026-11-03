@@ -60,8 +60,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const body = await request.json();
-    const { name, slug, description, rootDirectory } = body;
+    const body = await request.json().catch(() => ({}));
+    const name = body?.name || 'Personal Workspace';
+    const slug = body?.slug;
+    const description = body?.description;
+    const rootDirectory = body?.rootDirectory;
 
     const result = await createWorkspace(user.id, {
       name,

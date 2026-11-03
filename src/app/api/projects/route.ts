@@ -38,12 +38,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser(request);
-    const body = await request.json();
-    const { workspaceId, name, slug, path, kind, stack } = body;
+    const body = await request.json().catch(() => ({}));
+    const { workspaceId, name, path, kind, stack } = body;
+    const slug = body.slug || (name ? name.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : undefined);
 
-    if (!workspaceId || !name || !slug) {
+    if (!workspaceId || !name) {
       return NextResponse.json(
-        { success: false, error: 'workspaceId, name, and slug are required' },
+        { success: false, error: 'workspaceId and name are required' },
         { status: 400 }
       );
     }

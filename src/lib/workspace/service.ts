@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import type {
   Workspace,
   WorkspaceMember,
@@ -75,7 +76,9 @@ export async function createWorkspace(
 
   const now = Date.now();
   const workspaceId = `ws_${cleanSlug}_${Math.random().toString(36).substring(2, 7)}`;
-  const rootDir = dto.rootDirectory || path.resolve(process.cwd(), 'workspaces', cleanSlug);
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const defaultBaseDir = isServerless ? path.join(os.tmpdir(), 'myide', 'workspaces') : path.resolve(process.cwd(), 'workspaces');
+  const rootDir = dto.rootDirectory || path.join(defaultBaseDir, cleanSlug);
 
   const workspace: Workspace = {
     id: workspaceId,

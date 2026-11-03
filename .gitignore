@@ -58,3 +58,5 @@ workspaces/
 .playwright-mcp/
 phase1_preview_verified.png
 phase2_playwright_verified.png
+
+.vercel

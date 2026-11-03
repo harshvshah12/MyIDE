@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import {
   FileNode,
@@ -14,16 +15,21 @@ import {
 } from '@/types';
 import { encryptSecret, decryptSecret, maskSecret } from './crypto';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'myide', 'data') : path.join(process.cwd(), 'data');
 const SECRETS_FILE = path.join(DATA_DIR, 'vault.json');
 const CAPABILITIES_FILE = path.join(DATA_DIR, 'capabilities.json');
 const ENTITLEMENTS_FILE = path.join(DATA_DIR, 'entitlements.json');
 const MEMORY_FILE = path.join(DATA_DIR, 'project_memory.json');
 const EVIDENCE_FILE = path.join(DATA_DIR, 'evidence.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure data directory exists safely
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch {
+  // ignore in restricted environments
 }
 
 // In-memory presence state for active collaborative sessions
@@ -57,7 +63,9 @@ function writeJson<T>(filePath: string, data: T): void {
 // WORKSPACE & FILE SYSTEM
 // -------------------------------------------------------------
 
-export const DEFAULT_WORKSPACE_PATH = path.join(process.cwd(), 'workspace', 'demo-project');
+export const DEFAULT_WORKSPACE_PATH = isServerless
+  ? path.join(os.tmpdir(), 'myide', 'workspace', 'demo-project')
+  : path.join(process.cwd(), 'workspace', 'demo-project');
 
 export function ensureDefaultWorkspace(): void {
   if (!fs.existsSync(DEFAULT_WORKSPACE_PATH)) {

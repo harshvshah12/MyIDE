@@ -130,7 +130,18 @@ export async function getCurrentUser(request?: Request): Promise<User | null> {
       const token = authHeader.slice(7).trim();
       const session = verifySessionToken(token);
       if (session) {
-        return UserRepository.findById(session.userId);
+        let user = UserRepository.findById(session.userId);
+        if (!user) {
+          user = UserRepository.save({
+            id: session.userId,
+            email: session.email,
+            name: session.email.split('@')[0],
+            authProvider: 'local',
+            createdAt: session.issuedAt,
+            updatedAt: Date.now(),
+          });
+        }
+        return user;
       }
     }
 

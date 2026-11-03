@@ -215,6 +215,18 @@ export default function FabricIDE() {
   };
 
   const handleCreateWorkspace = async (name: string, slug: string) => {
+    // If user is unauthenticated, auto-provision session via /api/auth/quickstart first
+    if (!currentUser) {
+      try {
+        const qRes = await fetch('/api/auth/quickstart', { method: 'POST' });
+        const qData = await qRes.json();
+        if (qData.success && qData.user) {
+          setCurrentUser(qData.user);
+        }
+      } catch (err) {
+        console.warn('Auto quickstart error:', err);
+      }
+    }
     const res = await fetch('/api/workspace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

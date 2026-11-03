@@ -19,8 +19,19 @@ import { StoreEnvelopeSchema } from '../schema/entities.ts';
  * - Intended for single-node developer workstations and local team servers.
  */
 
+import os from 'os';
+
 const CURRENT_SCHEMA_VERSION = 1;
-const DATA_DIR = path.resolve(process.cwd(), 'data', 'store');
+
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT
+);
+
+const DATA_DIR = isServerless
+  ? path.join(os.tmpdir(), 'myide', 'data', 'store')
+  : path.resolve(process.cwd(), 'data', 'store');
 
 function ensureDataDirectory(): void {
   if (!fs.existsSync(DATA_DIR)) {
@@ -36,8 +47,21 @@ export function readCollection<T>(collectionName: string, itemSchema: z.ZodType<
   const filePath = path.join(DATA_DIR, `${collectionName}.json`);
 
   if (!fs.existsSync(filePath)) {
-    // Return empty collection if file does not exist yet
-    return [];
+    // If on serverless, copy bundled template file if present
+    if (isServerless) {
+      const bundledPath = path.resolve(process.cwd(), 'data', 'store', `${collectionName}.json`);
+      if (fs.existsSync(bundledPath)) {
+        try {
+          fs.copyFileSync(bundledPath, filePath);
+        } catch {
+          // ignore copy failure
+        }
+      }
+    }
+    if (!fs.existsSync(filePath)) {
+      // Return empty collection if file does not exist yet
+      return [];
+    }
   }
 
   try {

@@ -7,15 +7,8 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${origin}/api/auth/callback/google`;
 
   if (!clientId) {
-    // If not configured and in non-production, redirect to mock login if available
-    const isProduction = process.env.NODE_ENV === 'production';
-    if (!isProduction) {
-      return NextResponse.redirect(new URL('/api/auth/mock', request.url));
-    }
-    return NextResponse.json(
-      { success: false, error: 'Google OAuth Client ID is not configured in environment variables.' },
-      { status: 500 }
-    );
+    // If Google OAuth is not configured, gracefully redirect to quickstart authentication
+    return NextResponse.redirect(new URL('/api/auth/quickstart', request.url));
   }
 
   const { codeVerifier, codeChallenge } = generatePkce();

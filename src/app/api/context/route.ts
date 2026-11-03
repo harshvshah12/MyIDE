@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUser } from '@/lib/auth/session';
+import { requireUser, getCurrentUser } from '@/lib/auth/session';
 import { handleApiError, apiSuccess } from '@/lib/api/response';
 import { resolveActiveContext } from '@/lib/workspace/service';
 
@@ -8,7 +8,10 @@ const PROJECT_COOKIE = 'myide_project_id';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUser(request);
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return apiSuccess({ context: null });
+    }
 
     // Read requested workspace & project from searchParams, then fallback to cookies
     const searchParams = request.nextUrl.searchParams;

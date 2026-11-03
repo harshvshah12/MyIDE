@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUser } from '@/lib/auth/session';
+import crypto from 'crypto';
+import { requireUser, getCurrentUser, signSessionToken, createSessionCookieHeader } from '@/lib/auth/session';
+import { UserRepository } from '@/lib/db/repositories';
 import { handleApiError, apiSuccess } from '@/lib/api/response';
 import {
   createWorkspace,
@@ -30,7 +32,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUser(request);
+    let user = await getCurrentUser(request);
+    let autoSessionToken: string | null = null;
+
+    if (!user) {
+      // Auto-provision developer session on workspace initialization for zero-friction onboarding
+      const defaultEmail = 'developer@myide.local';
+      user = UserRepository.findByEmail(defaultEmail);
+      if (!user) {
+        const newId = `usr_dev_${crypto.randomBytes(3).toString('hex')}`;
+        user = UserRepository.save({
+          id: newId,
+          email: defaultEmail,
+          name: 'Developer',
+          authProvider: 'local',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+      const sessionId = `sess_${crypto.randomBytes(16).toString('hex')}`;
+      autoSessionToken = signSessionToken({
+        sessionId,
+        userId: user.id,
+        email: user.email,
+        issuedAt: Date.now(),
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      });
+    }
+
     const body = await request.json();
     const { name, slug, description, rootDirectory } = body;
 
@@ -41,7 +70,11 @@ export async function POST(request: NextRequest) {
       rootDirectory,
     });
 
-    return apiSuccess(result, 201);
+    const response = apiSuccess(result, 201);
+    if (autoSessionToken) {
+      response.headers.append('Set-Cookie', createSessionCookieHeader(autoSessionToken));
+    }
+    return response;
   } catch (error) {
     return handleApiError(error);
   }

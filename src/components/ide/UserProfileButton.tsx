@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { User as UserIcon, LogOut, Key, Shield, ChevronDown, Check } from 'lucide-react';
+import { User as UserIcon, LogOut, Key, Shield, ChevronDown, Check, Sparkles } from 'lucide-react';
 
 export interface UserProfile {
   id: string;
@@ -37,13 +37,24 @@ export const UserProfileButton: React.FC<UserProfileButtonProps> = ({
 
   if (!user) {
     return (
-      <a
-        href="/api/auth/google"
-        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-violet-600/30 transition-colors"
-      >
-        <UserIcon className="w-3.5 h-3.5" />
-        <span>Sign In</span>
-      </a>
+      <div className="flex items-center gap-1.5">
+        <a
+          href="/api/auth/quickstart"
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 hover:bg-indigo-600/50 transition-colors shadow-sm"
+          title="1-Click Instant Developer Login"
+        >
+          <Sparkles className="w-3 h-3 text-indigo-400" />
+          <span>Quick Login</span>
+        </a>
+        <a
+          href="/api/auth/google"
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-white/[0.04] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] transition-colors"
+          title="Sign in with Google OAuth"
+        >
+          <UserIcon className="w-3 h-3 text-slate-400" />
+          <span>Google</span>
+        </a>
+      </div>
     );
   }
 

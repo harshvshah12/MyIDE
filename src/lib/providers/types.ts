@@ -54,6 +54,15 @@ export interface ProviderAdapter {
     healthy: boolean;
     message?: string;
   }>;
+
+  /**
+   * Executes inference through this provider adapter.
+   */
+  execute(
+    connection: ProviderConnection,
+    request: ProviderExecutionRequest,
+    options?: { signal?: AbortSignal }
+  ): Promise<ProviderExecutionResult>;
 }
 
 /**

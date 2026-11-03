@@ -73,4 +73,91 @@ export class LocalDaemonAdapter implements ProviderAdapter {
     const test = await this.testConnection(connection);
     return { healthy: test.success, message: test.error };
   }
+
+  public async execute(
+    connection: ProviderConnection,
+    request: ProviderExecutionRequest,
+    options?: { signal?: AbortSignal }
+  ): Promise<ProviderExecutionResult> {
+    const startTime = Date.now();
+    let endpoint = 'http://localhost:11434/v1';
+    if (connection.encryptedCredential) {
+      try {
+        const decrypted = decryptSecret(connection.encryptedCredential);
+        if (decrypted.startsWith('http://') || decrypted.startsWith('https://')) {
+          endpoint = decrypted;
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    // Clean up base URL for OpenAI-compatible completions
+    const baseUrl = endpoint.replace(/\/+$/, '');
+    const chatUrl = baseUrl.endsWith('/v1') ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+
+    const messages: Array<{ role: string; content: string }> = [];
+    if (request.systemPrompt) {
+      messages.push({ role: 'system', content: request.systemPrompt });
+    }
+    messages.push({ role: 'user', content: request.prompt });
+
+    // Normalize model ID for local daemon (strip suffix if needed)
+    let localModel = request.modelId;
+    if (localModel === 'llama-3.3-70b-local') {
+      localModel = 'llama3.3:latest';
+    }
+
+    const payload = {
+      model: localModel,
+      messages,
+      temperature: request.temperature ?? 0.7,
+      max_tokens: request.maxTokens ?? 2048,
+    };
+
+    const res = await fetch(chatUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: options?.signal,
+    });
+
+    const durationMs = Date.now() - startTime;
+
+    if (!res.ok) {
+      let errDetail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error?.message) {
+          errDetail = errJson.error.message;
+        }
+      } catch {
+        // ignore
+      }
+      throw new Error(`Local daemon execution failed: ${errDetail}`);
+    }
+
+    const json = await res.json();
+    const choice = json.choices?.[0];
+    const text = choice?.message?.content || '';
+
+    const inputTokens = json.usage?.prompt_tokens || Math.ceil(request.prompt.length / 4);
+    const outputTokens = json.usage?.completion_tokens || Math.ceil(text.length / 4);
+    const totalTokens = inputTokens + outputTokens;
+
+    // Local model compute cost is 0 USD
+    return {
+      content: text,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        costUsd: 0,
+      },
+      durationMs,
+      finishReason: 'stop',
+    };
+  }
 }

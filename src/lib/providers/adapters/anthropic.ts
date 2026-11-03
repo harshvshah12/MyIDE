@@ -70,4 +70,91 @@ export class AnthropicAdapter implements ProviderAdapter {
     const test = await this.testConnection(connection);
     return { healthy: test.success, message: test.error };
   }
+
+  public async execute(
+    connection: ProviderConnection,
+    request: ProviderExecutionRequest,
+    options?: { signal?: AbortSignal }
+  ): Promise<ProviderExecutionResult> {
+    const startTime = Date.now();
+    const apiKey = decryptSecret(connection.encryptedCredential);
+
+    // Normalize Anthropic model ID
+    let apiModelId = request.modelId;
+    if (apiModelId.includes('3-7-sonnet') || apiModelId.includes('3-5-sonnet')) {
+      apiModelId = 'claude-3-5-sonnet-latest';
+    } else if (apiModelId.includes('haiku')) {
+      apiModelId = 'claude-3-5-haiku-latest';
+    }
+
+    const payload: any = {
+      model: apiModelId,
+      max_tokens: request.maxTokens ?? 4096,
+      temperature: request.temperature ?? 0.7,
+      messages: [{ role: 'user', content: request.prompt }],
+    };
+
+    if (request.systemPrompt) {
+      payload.system = request.systemPrompt;
+    }
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(payload),
+      signal: options?.signal,
+    });
+
+    const durationMs = Date.now() - startTime;
+
+    if (!res.ok) {
+      let errDetail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error?.message) {
+          errDetail = errJson.error.message;
+        }
+      } catch {
+        // ignore
+      }
+      throw new Error(`Anthropic execution failed: ${errDetail}`);
+    }
+
+    const json = await res.json();
+    const text = json.content
+      ?.filter((block: any) => block.type === 'text')
+      ?.map((block: any) => block.text)
+      ?.join('') || '';
+
+    const inputTokens = json.usage?.input_tokens || Math.ceil(request.prompt.length / 4);
+    const outputTokens = json.usage?.output_tokens || Math.ceil(text.length / 4);
+    const totalTokens = inputTokens + outputTokens;
+
+    const modelCap = KNOWN_MODEL_CAPABILITIES[request.modelId] || KNOWN_MODEL_CAPABILITIES['claude-3-7-sonnet'];
+    const costPer1kInput = modelCap?.costPer1kInputUsd ?? 0.003;
+    const costPer1kOutput = modelCap?.costPer1kOutputUsd ?? 0.015;
+    const costUsd = Number(((inputTokens / 1000) * costPer1kInput + (outputTokens / 1000) * costPer1kOutput).toFixed(6));
+
+    const finishReasonMap: Record<string, ProviderExecutionResult['finishReason']> = {
+      end_turn: 'stop',
+      max_tokens: 'length',
+      stop_sequence: 'stop',
+    };
+
+    return {
+      content: text,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        costUsd,
+      },
+      durationMs,
+      finishReason: finishReasonMap[json.stop_reason] || 'stop',
+    };
+  }
 }

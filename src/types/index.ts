@@ -196,6 +196,16 @@ export interface AgentChatMessage {
     output?: string;
   }>;
   evidenceId?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    costUsd: number;
+  };
+  durationMs?: number;
+  isSimulated?: boolean;
+  simulationReason?: string;
+  proposedChange?: string;
 }
 
 // Project Intelligence (UI Interfaces)

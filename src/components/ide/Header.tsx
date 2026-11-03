@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRunActiveFile,
 }) => {
   return (
-    <header className="flex items-center justify-between px-3 h-10 bg-[#0B101D] border-b border-white/10 select-none z-20">
+    <header className="flex items-center justify-between px-3 h-10 bg-[#080B11] border-b border-white/[0.08] select-none z-20">
       {/* Left: Brand & Workspace */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2">

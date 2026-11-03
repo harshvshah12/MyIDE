@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import {
@@ -35,7 +35,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   onOpenExplainRationale,
 }) => {
   return (
-    <div className="flex items-center justify-between px-3 h-6 bg-[#080C14] border-t border-white/10 text-[11px] text-slate-400 select-none z-30">
+    <div className="flex items-center justify-between px-3 h-6 bg-[#080B11] border-t border-white/[0.08] text-[11px] text-slate-400 select-none z-30">
       {/* Left items: Git branch, File path, Line/Col */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-1 text-slate-300 hover:text-white cursor-pointer transition-colors">

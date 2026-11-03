@@ -26,10 +26,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Prompt is required' }, { status: 400 });
     }
 
+    let effectivePrompt = prompt.trim();
+    let effectiveRole = agentRole as AgentRole;
+
+    // Handle Antigravity Slash Commands
+    if (effectivePrompt === '/help') {
+      return NextResponse.json({
+        success: true,
+        reply: `### Antigravity Command Palette\n\n` +
+          `Available built-in slash commands:\n` +
+          `- **/plan <task>**: Autonomous task contract breakdown and architecture blueprint.\n` +
+          `- **/fix <issue>**: Root-cause diagnostic and immediate side-by-side diff generation for active file.\n` +
+          `- **/review**: Senior engineer code quality, performance, and best practices audit.\n` +
+          `- **/security**: OWASP Top 10 boundary check, credential isolation, and path escape scan.\n` +
+          `- **/test**: Generates comprehensive unit and integration test suite.\n` +
+          `- **/terminal <cmd>**: Executes shell command directly in the sandbox and streams stdout/stderr.\n` +
+          `- **/docs**: Generates complete technical specifications, ADRs, or README documentation.`,
+        modelUsed: 'Antigravity Kernel',
+        routingDecision: { selectedModelId: 'gemini-3.8-flash', rationale: 'Command palette query' },
+        toolCalls: [],
+      });
+    }
+
+    if (effectivePrompt.startsWith('/plan')) {
+      effectiveRole = 'planner';
+      effectivePrompt = effectivePrompt.replace(/^\/plan\s*/, '') || 'Create a full implementation plan for this project.';
+    } else if (effectivePrompt.startsWith('/fix') || effectivePrompt.startsWith('/debug')) {
+      effectiveRole = 'debugger';
+      effectivePrompt = effectivePrompt.replace(/^\/(?:fix|debug)\s*/, '') || 'Identify and fix any bugs or edge cases in the active file.';
+    } else if (effectivePrompt.startsWith('/review')) {
+      effectiveRole = 'reviewer';
+      effectivePrompt = effectivePrompt.replace(/^\/review\s*/, '') || 'Review this code for quality, performance, readability, and clean architecture.';
+    } else if (effectivePrompt.startsWith('/security')) {
+      effectiveRole = 'security';
+      effectivePrompt = effectivePrompt.replace(/^\/security\s*/, '') || 'Audit this code for security vulnerabilities, OWASP flaws, and credential leaks.';
+    } else if (effectivePrompt.startsWith('/test')) {
+      effectiveRole = 'tester';
+      effectivePrompt = effectivePrompt.replace(/^\/test\s*/, '') || 'Generate a comprehensive unit test suite with high coverage for this file.';
+    } else if (effectivePrompt.startsWith('/docs')) {
+      effectiveRole = 'docs';
+      effectivePrompt = effectivePrompt.replace(/^\/docs\s*/, '') || 'Generate technical documentation and architecture overview for this module.';
+    }
+
     // 1. Determine Model Route (Mode A Auto, Mode B Manual, Mode C Capability)
     const routingDecision = determineModelRoute({
-      prompt: prompt.trim(),
-      agentRole: agentRole as AgentRole,
+      prompt: effectivePrompt,
+      agentRole: effectiveRole,
       mode: mode as ModelMode,
       manualModelId,
       capabilityId,
@@ -63,8 +105,8 @@ export async function POST(request: NextRequest) {
       userId,
       workspaceId,
       projectId,
-      prompt: prompt.trim(),
-      agentRole: agentRole as AgentRole,
+      prompt: effectivePrompt,
+      agentRole: effectiveRole,
       modelId: routingDecision.selectedModelId,
       capabilityId,
       activeFilePath,

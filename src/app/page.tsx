@@ -412,12 +412,28 @@ export default function FabricIDE() {
     });
   };
 
-  const handleAcceptDiff = () => {
+  const handleAcceptDiff = async () => {
     if (!diffMode) return;
     const tab = tabs.find((t) => t.path === diffMode.targetPath);
     if (tab) {
       handleChangeContent(tab.id, diffMode.modified);
-      handleSaveFile(tab.id);
+      await handleSaveFile(tab.id);
+    } else {
+      try {
+        await fetch('/api/files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: diffMode.targetPath,
+            content: diffMode.modified,
+            projectId: currentProject?.id,
+          }),
+        });
+        await refreshFiles();
+        await loadFileIntoTab(diffMode.targetPath);
+      } catch (e) {
+        console.error('Failed to accept diff:', e);
+      }
     }
     setDiffMode(null);
   };
@@ -537,7 +553,11 @@ export default function FabricIDE() {
           {/* Bottom Center: Integrated Terminal & Command Runner */}
           {isTerminalOpen && (
             <div className="h-[38%] border-t border-white/10">
-              <TerminalPane activeFilePath={activeTab?.path} />
+              <TerminalPane
+                activeFilePath={activeTab?.path}
+                projectId={currentProject?.id}
+                workspaceId={currentWorkspace?.id}
+              />
             </div>
           )}
         </div>

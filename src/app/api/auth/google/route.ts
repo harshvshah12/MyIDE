@@ -1,21 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePkce, generateStateNonce, buildGoogleAuthUrl } from '@/lib/auth/oauth';
+import { getGoogleOAuthConfig } from '@/lib/auth/oauth-config';
 
 export async function GET(request: NextRequest) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
   const origin = request.nextUrl.origin;
   const redirectUri = `${origin}/api/auth/callback/google`;
+  const oauthConfig = getGoogleOAuthConfig();
 
-  if (!clientId) {
-    // If Google OAuth is not configured, gracefully redirect to quickstart authentication
-    return NextResponse.redirect(new URL('/api/auth/quickstart', request.url));
+  if (!oauthConfig.isConfigured || !oauthConfig.clientId) {
+    // Return friendly setup instructions with current redirectUri
+    return NextResponse.json(
+      {
+        success: false,
+        configured: false,
+        error: 'Google OAuth Client ID & Secret must be configured in Google Cloud Console.',
+        redirectUri,
+        instructions: `Create an OAuth 2.0 Client ID in Google Cloud Console with Authorized Redirect URI: ${redirectUri}`,
+      },
+      { status: 400 }
+    );
   }
 
   const { codeVerifier, codeChallenge } = generatePkce();
   const state = generateStateNonce();
 
   const authUrl = buildGoogleAuthUrl({
-    clientId,
+    clientId: oauthConfig.clientId,
     redirectUri,
     state,
     codeChallenge,

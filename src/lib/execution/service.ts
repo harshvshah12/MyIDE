@@ -14,6 +14,7 @@ import { ProviderRegistry, KNOWN_MODEL_CAPABILITIES } from '../providers/registr
 import { validateEntitlementAccess } from '../auth/authorization.ts';
 import type { ProviderConnection } from '../schema/entities.ts';
 import { ExecutionError, ProviderUnavailableError } from './types.ts';
+import { encryptSecret, maskSecret } from '../crypto.ts';
 
 /**
  * Builds a role-specific system prompt that instructs the AI model
@@ -302,6 +303,60 @@ export async function executeAITask(req: ExecutionRequest): Promise<ExecutionRes
       if (anyActiveConn) {
         activeConnection = anyActiveConn;
         targetProvider = anyActiveConn.provider;
+      }
+    }
+
+    // Check for environment variables fallback if no user-specific connection exists
+    if (!activeConnection) {
+      const envGemini = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const envOpenAI = process.env.OPENAI_API_KEY;
+      const envAnthropic = process.env.ANTHROPIC_API_KEY;
+
+      if (envGemini && (targetProvider === 'google' || (!envOpenAI && !envAnthropic))) {
+        activeConnection = {
+          id: 'pconn_google_env',
+          ownerId: req.userId,
+          provider: 'google',
+          authMethod: 'api_key',
+          encryptedCredential: encryptSecret(envGemini),
+          maskedCredential: maskSecret(envGemini),
+          status: 'active',
+          availableModels: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+          usageCount: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        targetProvider = 'google';
+      } else if (envOpenAI && targetProvider === 'openai') {
+        activeConnection = {
+          id: 'pconn_openai_env',
+          ownerId: req.userId,
+          provider: 'openai',
+          authMethod: 'api_key',
+          encryptedCredential: encryptSecret(envOpenAI),
+          maskedCredential: maskSecret(envOpenAI),
+          status: 'active',
+          availableModels: ['gpt-4o', 'gpt-4o-mini'],
+          usageCount: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        targetProvider = 'openai';
+      } else if (envAnthropic && targetProvider === 'anthropic') {
+        activeConnection = {
+          id: 'pconn_anthropic_env',
+          ownerId: req.userId,
+          provider: 'anthropic',
+          authMethod: 'api_key',
+          encryptedCredential: encryptSecret(envAnthropic),
+          maskedCredential: maskSecret(envAnthropic),
+          status: 'active',
+          availableModels: ['claude-3-5-sonnet-20241022'],
+          usageCount: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        targetProvider = 'anthropic';
       }
     }
   }

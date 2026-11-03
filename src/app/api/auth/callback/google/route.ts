@@ -7,6 +7,7 @@ import {
 import { constantTimeEqual } from '@/lib/crypto';
 import { UserRepository } from '@/lib/db/repositories';
 import { signSessionToken, createSessionCookieHeader } from '@/lib/auth/session';
+import { getGoogleOAuthConfig } from '@/lib/auth/oauth-config';
 import type { User } from '@/lib/schema/entities';
 
 export async function GET(request: NextRequest) {
@@ -47,8 +48,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const oauthConfig = getGoogleOAuthConfig();
+  const clientId = oauthConfig.clientId;
+  const clientSecret = oauthConfig.clientSecret;
   const redirectUri = `${request.nextUrl.origin}/api/auth/callback/google`;
 
   if (!clientId || !clientSecret) {

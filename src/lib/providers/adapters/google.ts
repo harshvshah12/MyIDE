@@ -74,10 +74,12 @@ export class GoogleGeminiAdapter implements ProviderAdapter {
 
     // Normalize model ID for Google Generative AI API
     let apiModelId = request.modelId;
-    if (apiModelId.startsWith('gemini-3.8-flash') || apiModelId.startsWith('gemini-3.7-flash')) {
-      apiModelId = 'gemini-1.5-flash';
-    } else if (apiModelId.startsWith('gemini-3.1-pro')) {
+    if (apiModelId.includes('pro')) {
       apiModelId = 'gemini-1.5-pro';
+    } else if (apiModelId.includes('2.0') || apiModelId.includes('2.5')) {
+      apiModelId = 'gemini-2.0-flash';
+    } else {
+      apiModelId = 'gemini-1.5-flash';
     }
 
     const payload: any = {

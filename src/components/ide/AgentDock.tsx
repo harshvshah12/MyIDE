@@ -338,11 +338,15 @@ export const AgentDock: React.FC<AgentDockProps> = ({
                     </button>
 
                     {/* Diff Review Button if proposedChange exists */}
-                    {msg.proposedChange && activeFilePath && (
+                    {msg.proposedChange && (
                       <button
                         type="button"
-                        onClick={() => onApplyCodeChanges(activeFilePath, msg.proposedChange!)}
-                        className="flex items-center space-x-1 px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 transition-colors"
+                        onClick={() => {
+                          const target = (typeof msg.proposedChange === 'object' && (msg.proposedChange as any).targetPath) || activeFilePath || 'file';
+                          const content = (typeof msg.proposedChange === 'object' && (msg.proposedChange as any).newContent) || (msg.proposedChange as string);
+                          onApplyCodeChanges(target, content);
+                        }}
+                        className="flex items-center space-x-1 px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 transition-colors cursor-pointer"
                       >
                         <GitCompare className="w-3 h-3" />
                         <span>Review Diff</span>
@@ -396,6 +400,31 @@ export const AgentDock: React.FC<AgentDockProps> = ({
 
       {/* Input Prompt Dock in Antigravity Style */}
       <form onSubmit={handleSendMessage} className="p-3 border-t border-white/[0.08] bg-[#0A0E17]/90 backdrop-blur-sm">
+        {/* Antigravity Slash Command Pills */}
+        <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-1 text-[10px] text-slate-400 no-scrollbar">
+          {[
+            { cmd: '/plan ', label: '/plan', desc: 'Architecture plan' },
+            { cmd: '/fix ', label: '/fix', desc: 'Bug fix & diff' },
+            { cmd: '/review ', label: '/review', desc: 'Code audit' },
+            { cmd: '/test ', label: '/test', desc: 'Generate tests' },
+            { cmd: '/security ', label: '/security', desc: 'OWASP scan' },
+            { cmd: '/terminal ', label: '/terminal', desc: 'Run terminal command' },
+            { cmd: '/help', label: '/help', desc: 'Command palette' },
+          ].map((pill) => (
+            <button
+              key={pill.cmd}
+              type="button"
+              onClick={() => {
+                setInputPrompt(pill.cmd);
+              }}
+              className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-indigo-600/20 hover:text-indigo-200 border border-white/[0.06] hover:border-indigo-500/30 text-slate-300 font-mono text-[10px] transition-all shrink-0 cursor-pointer"
+              title={pill.desc}
+            >
+              {pill.label}
+            </button>
+          ))}
+        </div>
+
         {activeFilePath && (
           <div className="flex items-center space-x-1.5 text-[10.5px] text-slate-400 mb-2 px-1 truncate">
             <FileCode className="w-3 h-3 text-indigo-400" />

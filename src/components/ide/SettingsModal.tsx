@@ -289,15 +289,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  {selectedProvider === 'local' ? 'Local Daemon URL (e.g. Ollama / vLLM)' : 'Provider API Key'}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-300 font-medium">
+                    {selectedProvider === 'local' ? 'Local Daemon URL (e.g. Ollama / vLLM)' : `${getProviderName(selectedProvider)} API Key`}
+                  </label>
+                  {selectedProvider === 'google' && (
+                    <a
+                      href="https://aistudio.google.com/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-violet-400 hover:text-violet-300 underline"
+                    >
+                      Get Gemini API Key ↗
+                    </a>
+                  )}
+                  {selectedProvider === 'openai' && (
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-violet-400 hover:text-violet-300 underline"
+                    >
+                      Get OpenAI API Key ↗
+                    </a>
+                  )}
+                  {selectedProvider === 'anthropic' && (
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-violet-400 hover:text-violet-300 underline"
+                    >
+                      Get Anthropic API Key ↗
+                    </a>
+                  )}
+                </div>
                 <input
                   type={selectedProvider === 'local' ? 'text' : 'password'}
                   placeholder={
                     selectedProvider === 'local'
                       ? 'http://localhost:11434/v1'
-                      : `Enter ${selectedProvider} API key...`
+                      : selectedProvider === 'google'
+                      ? 'AIzaSy...'
+                      : selectedProvider === 'openai'
+                      ? 'sk-...'
+                      : 'sk-ant-...'
                   }
                   value={credentialInput}
                   onChange={(e) => setCredentialInput(e.target.value)}

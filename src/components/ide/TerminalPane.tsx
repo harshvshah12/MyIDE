@@ -13,6 +13,8 @@ import {
 
 interface TerminalPaneProps {
   activeFilePath?: string;
+  projectId?: string;
+  workspaceId?: string;
 }
 
 interface CommandLog {
@@ -25,7 +27,7 @@ interface CommandLog {
   timestamp: string;
 }
 
-export const TerminalPane: React.FC<TerminalPaneProps> = ({ activeFilePath }) => {
+export const TerminalPane: React.FC<TerminalPaneProps> = ({ activeFilePath, projectId, workspaceId }) => {
   const [activeTab, setActiveTab] = useState<'terminal' | 'output' | 'problems'>('terminal');
   const [commandInput, setCommandInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -61,7 +63,7 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ activeFilePath }) =>
       const res = await fetch('/api/terminal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: cmd }),
+        body: JSON.stringify({ command: cmd, projectId, workspaceId }),
       });
       const data = await res.json();
 

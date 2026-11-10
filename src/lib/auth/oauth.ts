@@ -50,6 +50,19 @@ export function generateStateNonce(): string {
 }
 
 /**
+ * Resolves the canonical Google OAuth redirect URI matching Google Console configuration.
+ */
+export function getGoogleRedirectUri(origin: string): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/google`;
+  }
+  if (origin && origin.includes('vercel.app')) {
+    return 'https://myide-gold.vercel.app/api/auth/callback/google';
+  }
+  return `${origin}/api/auth/callback/google`;
+}
+
+/**
  * Builds the Google OAuth 2.0 authorization URL.
  */
 export function buildGoogleAuthUrl(params: {

@@ -23,6 +23,11 @@ function ensureConfigDir() {
   }
 }
 
+const DEFAULT_ENC_CLIENT_ID =
+  '46b99f397e1dd531a8e3d84a4f055408:dec086c9fdc807fa7049c7f1:8ffc5946783c71e31f4fe003b75179f7:61e473732dbba2a4cb36b50560cd2f5d5399e64380a6699d9c10b7e333db9cad945de2f9ddbf491d7d438d794812f15a273341d2014b0b5aee2dc49cfc27f3ab1aca6954b1fff0ca';
+const DEFAULT_ENC_CLIENT_SECRET =
+  'a4491149116dfe84d47962f34d3ffcbb:15772f82e87d3076c17bf9e3:931062935ad79ad7db8785987d89c264:3e5082e4dcba0d5e0fa6063c3ab12a283331df534445a910cae5d486eb8779eeb25b7a';
+
 export function getGoogleOAuthConfig(): {
   clientId?: string;
   clientSecret?: string;
@@ -59,11 +64,22 @@ export function getGoogleOAuthConfig(): {
     console.error('Failed to read persisted OAuth config:', err);
   }
 
-  return {
-    clientId: envClientId?.trim(),
-    clientSecret: envClientSecret?.trim(),
-    isConfigured: false,
-  };
+  // 3. Fallback to default encrypted client credentials
+  try {
+    const clientId = decryptSecret(DEFAULT_ENC_CLIENT_ID);
+    const clientSecret = decryptSecret(DEFAULT_ENC_CLIENT_SECRET);
+    return {
+      clientId,
+      clientSecret,
+      isConfigured: true,
+    };
+  } catch {
+    return {
+      clientId: envClientId?.trim(),
+      clientSecret: envClientSecret?.trim(),
+      isConfigured: false,
+    };
+  }
 }
 
 export function saveGoogleOAuthConfig(clientId: string, clientSecret: string): void {

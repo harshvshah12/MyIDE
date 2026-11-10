@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import {
   exchangeGoogleAuthorizationCode,
   parseIdTokenPayload,
+  getGoogleRedirectUri,
 } from '@/lib/auth/oauth';
 import { constantTimeEqual, encryptSecret, maskSecret } from '@/lib/crypto';
 import { UserRepository, ProviderConnectionRepository } from '@/lib/db/repositories';
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
   const oauthConfig = getGoogleOAuthConfig();
   const clientId = oauthConfig.clientId;
   const clientSecret = oauthConfig.clientSecret;
-  const redirectUri = `${request.nextUrl.origin}/api/auth/callback/google`;
+  const redirectUri = getGoogleRedirectUri(request.nextUrl.origin);
 
   if (!clientId || !clientSecret) {
     return NextResponse.json(

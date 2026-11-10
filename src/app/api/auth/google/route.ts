@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generatePkce, generateStateNonce, buildGoogleAuthUrl } from '@/lib/auth/oauth';
+import { generatePkce, generateStateNonce, buildGoogleAuthUrl, getGoogleRedirectUri } from '@/lib/auth/oauth';
 import { getGoogleOAuthConfig } from '@/lib/auth/oauth-config';
 
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  const redirectUri = getGoogleRedirectUri(origin);
   const oauthConfig = getGoogleOAuthConfig();
 
   if (!oauthConfig.isConfigured || !oauthConfig.clientId) {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGoogleOAuthConfig, saveGoogleOAuthConfig } from '@/lib/auth/oauth-config';
+import { getGoogleRedirectUri } from '@/lib/auth/oauth';
 
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  const redirectUri = getGoogleRedirectUri(origin);
   const config = getGoogleOAuthConfig();
 
   return NextResponse.json({

@@ -7,6 +7,8 @@ import {
   WorkspaceRepository,
   CapabilityRepository,
   EntitlementRepository,
+  ConversationRepository,
+  ChatMessageRepository,
 } from '../src/lib/db/repositories.ts';
 
 test('Storage: Atomic Document Store writes and reads with schema validation', () => {
@@ -152,4 +154,58 @@ test('Storage: Capability emergency revocation kill-switch terminates all active
   // Verify both entitlements are now 'revoked'
   assert.strictEqual(EntitlementRepository.findById('ent_kill_1')?.status, 'revoked');
   assert.strictEqual(EntitlementRepository.findById('ent_kill_2')?.status, 'revoked');
+});
+
+test('Storage: Conversation and ChatMessage repositories manage persistent chat history', () => {
+  clearCollection('conversations');
+  clearCollection('chat_messages');
+
+  const conv = ConversationRepository.save({
+    id: 'conv_session_1',
+    workspaceId: 'ws_demo',
+    userId: 'usr_student_1',
+    title: 'Refactor Authentication Flow',
+    agentRole: 'coder',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  assert.strictEqual(conv.id, 'conv_session_1');
+  const foundConv = ConversationRepository.findById('conv_session_1');
+  assert.strictEqual(foundConv?.title, 'Refactor Authentication Flow');
+
+  // Save messages
+  ChatMessageRepository.save({
+    id: 'msg_1',
+    conversationId: 'conv_session_1',
+    role: 'user',
+    content: 'Can you refactor the Google OAuth callback?',
+    timestamp: 1000,
+  });
+
+  ChatMessageRepository.save({
+    id: 'msg_2',
+    conversationId: 'conv_session_1',
+    role: 'assistant',
+    agentRole: 'coder',
+    content: 'Sure, here is the updated implementation with automatic Gemini provisioning.',
+    modelUsed: 'gemini-2.5-pro',
+    timestamp: 2000,
+  });
+
+  const messages = ChatMessageRepository.listByConversation('conv_session_1');
+  assert.strictEqual(messages.length, 2);
+  assert.strictEqual(messages[0].role, 'user');
+  assert.strictEqual(messages[1].role, 'assistant');
+  assert.strictEqual(messages[1].modelUsed, 'gemini-2.5-pro');
+
+  // User conversation listing
+  const userConvs = ConversationRepository.listByUser('usr_student_1');
+  assert.strictEqual(userConvs.length, 1);
+
+  // Deleting conversation cascades to delete messages
+  const deleted = ConversationRepository.delete('conv_session_1');
+  assert.strictEqual(deleted, true);
+  assert.strictEqual(ConversationRepository.findById('conv_session_1'), null);
+  assert.strictEqual(ChatMessageRepository.listByConversation('conv_session_1').length, 0);
 });

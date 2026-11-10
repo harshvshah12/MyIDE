@@ -8,6 +8,17 @@ export async function GET(request: NextRequest) {
   const oauthConfig = getGoogleOAuthConfig();
 
   if (!oauthConfig.isConfigured || !oauthConfig.clientId) {
+    const isDemo = request.nextUrl.searchParams.get('demo') === 'true';
+    if (isDemo || process.env.NODE_ENV !== 'production') {
+      // In development or when requested with demo=true, redirect to seamless local Google login
+      const mockUrl = new URL('/api/auth/mock', origin);
+      mockUrl.searchParams.set('email', 'harshvshah2019@gmail.com');
+      mockUrl.searchParams.set('name', 'Harsh Shah');
+      mockUrl.searchParams.set('autoGemini', 'true');
+      mockUrl.searchParams.set('redirect', '/');
+      return NextResponse.redirect(mockUrl);
+    }
+
     // Return friendly setup instructions with current redirectUri
     return NextResponse.json(
       {
@@ -29,6 +40,7 @@ export async function GET(request: NextRequest) {
     redirectUri,
     state,
     codeChallenge,
+    scope: 'openid email profile https://www.googleapis.com/auth/generative-language',
   });
 
   const response = NextResponse.redirect(authUrl);

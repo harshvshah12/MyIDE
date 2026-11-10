@@ -4,11 +4,11 @@ import {
   exchangeGoogleAuthorizationCode,
   parseIdTokenPayload,
 } from '@/lib/auth/oauth';
-import { constantTimeEqual } from '@/lib/crypto';
-import { UserRepository } from '@/lib/db/repositories';
+import { constantTimeEqual, encryptSecret, maskSecret } from '@/lib/crypto';
+import { UserRepository, ProviderConnectionRepository } from '@/lib/db/repositories';
 import { signSessionToken, createSessionCookieHeader } from '@/lib/auth/session';
 import { getGoogleOAuthConfig } from '@/lib/auth/oauth-config';
-import type { User } from '@/lib/schema/entities';
+import type { User, ProviderConnection } from '@/lib/schema/entities';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 3. Exchange code for tokens
-    const { idToken } = await exchangeGoogleAuthorizationCode({
+    const { idToken, accessToken } = await exchangeGoogleAuthorizationCode({
       code,
       codeVerifier,
       clientId,
@@ -106,6 +106,50 @@ export async function GET(request: NextRequest) {
         updatedAt: now,
       };
       user = UserRepository.save(newUser);
+    }
+
+    // 5.1 Automatically provision / sync Google Gemini connection from Google OAuth Access Token
+    if (accessToken) {
+      const existingGoogleConn = ProviderConnectionRepository.listByOwner(user.id).find(
+        (c) => c.provider === 'google'
+      );
+      const encryptedCredential = encryptSecret(accessToken);
+      const maskedCredential = maskSecret(accessToken);
+      const availableModels = [
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-3.8-flash',
+      ];
+
+      if (existingGoogleConn) {
+        ProviderConnectionRepository.save({
+          ...existingGoogleConn,
+          authMethod: 'oauth',
+          encryptedCredential,
+          maskedCredential,
+          status: 'active',
+          availableModels,
+          updatedAt: now,
+        });
+      } else {
+        const connId = `pconn_google_${crypto.randomBytes(4).toString('hex')}`;
+        ProviderConnectionRepository.save({
+          id: connId,
+          ownerId: user.id,
+          provider: 'google',
+          authMethod: 'oauth',
+          encryptedCredential,
+          maskedCredential,
+          status: 'active',
+          availableModels,
+          usageCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     }
 
     // 6. Generate signed session token with unique session ID

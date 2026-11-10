@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { determineModelRoute } from '@/lib/router';
 import { getCurrentUser } from '@/lib/auth/session';
 import { readWorkspaceFile } from '@/lib/storage';
 import { executeAITask } from '@/lib/execution/service';
+import { ConversationRepository, ChatMessageRepository } from '@/lib/db/repositories';
 import { AgentRole, ModelMode } from '@/types';
 import { cookies } from 'next/headers';
 
@@ -20,6 +22,7 @@ export async function POST(request: NextRequest) {
       capabilityId,
       capabilityOwnerName,
       activeFilePath,
+      conversationId: requestedConversationId,
     } = body;
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -100,7 +103,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Central AI Execution
+    // 4. Resolve or initialize persistent Conversation Session
+    let activeConvId = requestedConversationId;
+    let conversation = activeConvId ? ConversationRepository.findById(activeConvId) : null;
+    const now = Date.now();
+
+    if (!conversation) {
+      activeConvId = `conv_${crypto.randomBytes(6).toString('hex')}`;
+      const titleCandidate = effectivePrompt.replace(/\s+/g, ' ').trim();
+      const title = titleCandidate.length > 50 ? `${titleCandidate.slice(0, 47)}...` : titleCandidate;
+      conversation = ConversationRepository.save({
+        id: activeConvId,
+        workspaceId,
+        projectId,
+        userId,
+        title: title || 'New Chat Session',
+        agentRole: effectiveRole,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      ConversationRepository.save({
+        ...conversation,
+        updatedAt: now,
+      });
+    }
+
+    // 5. Persist User Chat Message
+    const userMsgId = `msg_${crypto.randomBytes(6).toString('hex')}`;
+    ChatMessageRepository.save({
+      id: userMsgId,
+      conversationId: activeConvId,
+      role: 'user',
+      agentRole: effectiveRole,
+      content: effectivePrompt,
+      timestamp: now,
+    });
+
+    // 6. Central AI Execution
     const execution = await executeAITask({
       userId,
       workspaceId,
@@ -113,8 +153,32 @@ export async function POST(request: NextRequest) {
       activeFileContent,
     });
 
+    // 7. Persist Assistant Chat Message
+    const assistantMsgId = `msg_${crypto.randomBytes(6).toString('hex')}`;
+    ChatMessageRepository.save({
+      id: assistantMsgId,
+      conversationId: activeConvId,
+      role: 'assistant',
+      agentRole: effectiveRole,
+      content: execution.content,
+      modelUsed: execution.modelName,
+      capabilityUsed: capabilityId,
+      routingRationale: routingDecision.rationale,
+      toolCalls: execution.toolCalls || [],
+      evidenceId: execution.evidenceId,
+      usage: execution.usage,
+      durationMs: execution.durationMs,
+      isSimulated: execution.isSimulated,
+      simulationReason: execution.simulationReason,
+      proposedChange: execution.proposedChange?.newContent,
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json({
       success: true,
+      conversationId: activeConvId,
+      userMessageId: userMsgId,
+      assistantMessageId: assistantMsgId,
       reply: execution.content,
       proposedChange: execution.proposedChange?.newContent || null,
       routingDecision,

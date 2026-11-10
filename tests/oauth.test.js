@@ -10,6 +10,10 @@ import {
   parseIdTokenPayload,
 } from '../src/lib/auth/oauth.ts';
 import {
+  buildOpenAIAuthUrl,
+  parseOpenAITokenPayload,
+} from '../src/lib/auth/oauth-openai.ts';
+import {
   signSessionToken,
   verifySessionToken,
   revokeSession,
@@ -160,5 +164,53 @@ test('OAuth & Session Security Suite', async (t) => {
     const clearHeader = createClearSessionCookieHeader();
     assert.ok(clearHeader.includes('myide_session=;'));
     assert.ok(clearHeader.includes('Max-Age=0'));
+  });
+
+  await t.test('10. Google Auth URL with Gemini Scope: Generates Gemini Generative Language OAuth Scope', () => {
+    const urlStr = buildGoogleAuthUrl({
+      clientId: 'google-client-id-gemini',
+      redirectUri: 'http://localhost:3000/api/auth/callback/google',
+      state: 'nonce_xyz',
+      codeChallenge: 'pkce_challenge_xyz',
+      scope: 'openid email profile https://www.googleapis.com/auth/generative-language',
+    });
+
+    const url = new URL(urlStr);
+    assert.strictEqual(url.hostname, 'accounts.google.com');
+    assert.ok(url.searchParams.get('scope')?.includes('https://www.googleapis.com/auth/generative-language'));
+  });
+
+  await t.test('11. OpenAI / ChatGPT Auth URL: Contains all required OIDC/PKCE parameters and model.request scopes', () => {
+    const urlStr = buildOpenAIAuthUrl({
+      clientId: 'openai-client-app-id',
+      redirectUri: 'http://localhost:3000/api/auth/callback/openai',
+      state: 'state_openai_123',
+      codeChallenge: 'challenge_openai_456',
+    });
+
+    const url = new URL(urlStr);
+    assert.strictEqual(url.hostname, 'auth.openai.com');
+    assert.strictEqual(url.searchParams.get('client_id'), 'openai-client-app-id');
+    assert.strictEqual(url.searchParams.get('redirect_uri'), 'http://localhost:3000/api/auth/callback/openai');
+    assert.strictEqual(url.searchParams.get('response_type'), 'code');
+    assert.ok(url.searchParams.get('scope')?.includes('model.request'));
+    assert.strictEqual(url.searchParams.get('code_challenge'), 'challenge_openai_456');
+    assert.strictEqual(url.searchParams.get('code_challenge_method'), 'S256');
+    assert.strictEqual(url.searchParams.get('state'), 'state_openai_123');
+  });
+
+  await t.test('12. OpenAI Token Parser: Extracts sub and email claims from JWT payload', () => {
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+      sub: 'openai_usr_7788',
+      email: 'chatgpt.engineer@openai.com',
+      name: 'ChatGPT Engineer',
+    })).toString('base64url');
+    const fakeToken = `${header}.${payload}.sig`;
+
+    const profile = parseOpenAITokenPayload(fakeToken);
+    assert.strictEqual(profile.sub, 'openai_usr_7788');
+    assert.strictEqual(profile.email, 'chatgpt.engineer@openai.com');
+    assert.strictEqual(profile.name, 'ChatGPT Engineer');
   });
 });

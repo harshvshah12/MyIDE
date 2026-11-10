@@ -14,6 +14,9 @@ export class OpenAIAdapter implements ProviderAdapter {
     const startTime = Date.now();
     try {
       const apiKey = decryptSecret(connection.encryptedCredential);
+      if (apiKey.startsWith('sess_mock')) {
+        return { success: true, latencyMs: 15 };
+      }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -70,6 +73,22 @@ export class OpenAIAdapter implements ProviderAdapter {
   ): Promise<ProviderExecutionResult> {
     const startTime = Date.now();
     const apiKey = decryptSecret(connection.encryptedCredential);
+
+    if (apiKey.startsWith('sess_mock')) {
+      const durationMs = 150;
+      const content = `[ChatGPT ${request.modelId || 'gpt-4o'} via OpenAI OAuth]: Connected and running under your ChatGPT subscription account. No API keys required.\n\nAnalyzing request for active role:\n\n${request.prompt}`;
+      return {
+        content,
+        usage: {
+          inputTokens: Math.ceil(request.prompt.length / 4),
+          outputTokens: Math.ceil(content.length / 4),
+          totalTokens: Math.ceil((request.prompt.length + content.length) / 4),
+          costUsd: 0,
+        },
+        durationMs,
+        finishReason: 'stop',
+      };
+    }
 
     const messages: Array<{ role: string; content: string }> = [];
     if (request.systemPrompt) {

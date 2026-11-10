@@ -57,12 +57,13 @@ export function buildGoogleAuthUrl(params: {
   redirectUri: string;
   state: string;
   codeChallenge: string;
+  scope?: string;
 }): string {
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.searchParams.set('client_id', params.clientId);
   url.searchParams.set('redirect_uri', params.redirectUri);
   url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', 'openid email profile');
+  url.searchParams.set('scope', params.scope || 'openid email profile');
   url.searchParams.set('code_challenge', params.codeChallenge);
   url.searchParams.set('code_challenge_method', 'S256');
   url.searchParams.set('state', params.state);
@@ -80,7 +81,7 @@ export async function exchangeGoogleAuthorizationCode(params: {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-}): Promise<{ idToken: string; accessToken: string }> {
+}): Promise<{ idToken: string; accessToken: string; refreshToken?: string }> {
   const body = new URLSearchParams({
     code: params.code,
     code_verifier: params.codeVerifier,
@@ -109,6 +110,7 @@ export async function exchangeGoogleAuthorizationCode(params: {
   return {
     idToken: data.id_token,
     accessToken: data.access_token,
+    refreshToken: data.refresh_token,
   };
 }
 

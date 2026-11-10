@@ -9,6 +9,8 @@ import type {
   Entitlement,
   ProjectMemory,
   Evidence,
+  Conversation,
+  ChatMessage,
 } from '../schema/entities.ts';
 import {
   UserSchema,
@@ -20,6 +22,8 @@ import {
   EntitlementSchema,
   ProjectMemorySchema,
   EvidenceSchema,
+  ConversationSchema,
+  ChatMessageSchema,
 } from '../schema/entities.ts';
 
 // -------------------------------------------------------------
@@ -349,5 +353,78 @@ export const EvidenceRepository = {
     const trimmed = list.slice(0, 2000);
     writeCollection('evidence', trimmed, EvidenceSchema);
     return evidence;
+  },
+};
+
+// -------------------------------------------------------------
+// 10. Conversation Repository
+// -------------------------------------------------------------
+export const ConversationRepository = {
+  list(): Conversation[] {
+    return readCollection<Conversation>('conversations', ConversationSchema);
+  },
+  findById(id: string): Conversation | null {
+    return this.list().find((c) => c.id === id) || null;
+  },
+  listByUser(userId: string, workspaceId?: string): Conversation[] {
+    return this.list()
+      .filter((c) => c.userId === userId && (!workspaceId || c.workspaceId === workspaceId))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+  save(conv: Conversation): Conversation {
+    const convs = this.list();
+    const index = convs.findIndex((c) => c.id === conv.id);
+    if (index >= 0) {
+      convs[index] = { ...conv, updatedAt: Date.now() };
+    } else {
+      convs.push(conv);
+    }
+    writeCollection('conversations', convs, ConversationSchema);
+    return conv;
+  },
+  delete(id: string): boolean {
+    const convs = this.list();
+    const filtered = convs.filter((c) => c.id !== id);
+    if (filtered.length === convs.length) return false;
+    writeCollection('conversations', filtered, ConversationSchema);
+    ChatMessageRepository.deleteByConversation(id);
+    return true;
+  },
+};
+
+// -------------------------------------------------------------
+// 11. Chat Message Repository
+// -------------------------------------------------------------
+export const ChatMessageRepository = {
+  list(): ChatMessage[] {
+    return readCollection<ChatMessage>('chat_messages', ChatMessageSchema);
+  },
+  findById(id: string): ChatMessage | null {
+    return this.list().find((m) => m.id === id) || null;
+  },
+  listByConversation(conversationId: string): ChatMessage[] {
+    return this.list()
+      .filter((m) => m.conversationId === conversationId)
+      .sort((a, b) => a.timestamp - b.timestamp);
+  },
+  save(msg: ChatMessage): ChatMessage {
+    const messages = this.list();
+    const index = messages.findIndex((m) => m.id === msg.id);
+    if (index >= 0) {
+      messages[index] = msg;
+    } else {
+      messages.push(msg);
+    }
+    writeCollection('chat_messages', messages, ChatMessageSchema);
+    return msg;
+  },
+  deleteByConversation(conversationId: string): number {
+    const messages = this.list();
+    const filtered = messages.filter((m) => m.conversationId !== conversationId);
+    const count = messages.length - filtered.length;
+    if (count > 0) {
+      writeCollection('chat_messages', filtered, ChatMessageSchema);
+    }
+    return count;
   },
 };

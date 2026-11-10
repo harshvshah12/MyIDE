@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { UserRepository } from '@/lib/db/repositories';
+import { UserRepository, ProviderConnectionRepository } from '@/lib/db/repositories';
+import { encryptSecret, maskSecret } from '@/lib/crypto';
 import { signSessionToken, createSessionCookieHeader } from '@/lib/auth/session';
 import type { User } from '@/lib/schema/entities';
 
@@ -37,6 +38,34 @@ export async function GET(request: NextRequest) {
       updatedAt: now,
     };
     user = UserRepository.save(newUser);
+  }
+
+  // Auto-provision Google Gemini provider connection for mock Google sign-in
+  const existingGoogleConn = ProviderConnectionRepository.listByOwner(user.id).find(
+    (c) => c.provider === 'google'
+  );
+  if (!existingGoogleConn) {
+    const demoToken = 'ya29.a0AfH6SMA_mock_google_oauth_gemini_token';
+    ProviderConnectionRepository.save({
+      id: `pconn_google_${crypto.randomBytes(4).toString('hex')}`,
+      ownerId: user.id,
+      provider: 'google',
+      authMethod: 'oauth',
+      encryptedCredential: encryptSecret(demoToken),
+      maskedCredential: maskSecret(demoToken),
+      status: 'active',
+      availableModels: [
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-3.8-flash',
+      ],
+      usageCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
   }
 
   const sessionId = `sess_${crypto.randomBytes(16).toString('hex')}`;
@@ -84,6 +113,34 @@ export async function POST(request: NextRequest) {
         updatedAt: now,
       };
       user = UserRepository.save(newUser);
+    }
+
+    // Auto-provision Google Gemini provider connection for mock Google sign-in
+    const existingGoogleConn = ProviderConnectionRepository.listByOwner(user.id).find(
+      (c) => c.provider === 'google'
+    );
+    if (!existingGoogleConn) {
+      const demoToken = 'ya29.a0AfH6SMA_mock_google_oauth_gemini_token';
+      ProviderConnectionRepository.save({
+        id: `pconn_google_${crypto.randomBytes(4).toString('hex')}`,
+        ownerId: user.id,
+        provider: 'google',
+        authMethod: 'oauth',
+        encryptedCredential: encryptSecret(demoToken),
+        maskedCredential: maskSecret(demoToken),
+        status: 'active',
+        availableModels: [
+          'gemini-2.5-pro',
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-1.5-pro',
+          'gemini-1.5-flash',
+          'gemini-3.8-flash',
+        ],
+        usageCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     const sessionId = `sess_${crypto.randomBytes(16).toString('hex')}`;

@@ -206,6 +206,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             <span className="text-xs font-semibold text-slate-100">
                               {getProviderName(conn.provider)}
                             </span>
+                            {conn.authMethod === 'oauth' && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                OAuth (Zero-Key)
+                              </span>
+                            )}
                             <span
                               className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold ${
                                 conn.status === 'active'

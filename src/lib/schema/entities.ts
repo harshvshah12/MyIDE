@@ -8,7 +8,7 @@ export const UserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   avatarUrl: z.string().url().optional(),
-  authProvider: z.enum(['google', 'github', 'local']),
+  authProvider: z.enum(['google', 'github', 'openai', 'local']),
   authProviderId: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -167,6 +167,44 @@ export const EvidenceSchema = z.object({
   createdAt: z.number(),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
+
+/**
+ * 10. Conversation Entity Schema
+ */
+export const ConversationSchema = z.object({
+  id: z.string().startsWith('conv_'),
+  workspaceId: z.string().startsWith('ws_'),
+  projectId: z.string().startsWith('proj_').optional(),
+  userId: z.string().startsWith('usr_'),
+  title: z.string().min(1),
+  agentRole: z.string().default('coder'),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export type Conversation = z.infer<typeof ConversationSchema>;
+
+/**
+ * 11. ChatMessage Entity Schema
+ */
+export const ChatMessageSchema = z.object({
+  id: z.string().startsWith('msg_'),
+  conversationId: z.string().startsWith('conv_'),
+  role: z.enum(['user', 'assistant', 'system']),
+  agentRole: z.string().optional(),
+  content: z.string(),
+  modelUsed: z.string().optional(),
+  capabilityUsed: z.string().optional(),
+  routingRationale: z.string().optional(),
+  toolCalls: z.array(z.any()).default([]),
+  evidenceId: z.string().optional(),
+  usage: z.any().optional(),
+  durationMs: z.number().optional(),
+  isSimulated: z.boolean().optional(),
+  simulationReason: z.string().optional(),
+  proposedChange: z.string().optional(),
+  timestamp: z.number(),
+});
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
 /**
  * Store Envelope Schema with Schema Versioning
